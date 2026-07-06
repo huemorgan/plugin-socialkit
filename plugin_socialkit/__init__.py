@@ -284,7 +284,7 @@ class SocialKitPlugin(LunaPlugin):
         shown_name="SocialKit",
         icon="megaphone",
         image="assets/icon.png",
-        version="0.1.0",
+        version="0.1.1",
         description=(
             "Generate, score, and rewrite social posts against the live LinkedIn/X "
             "algorithm, plan content calendars, and create ad visuals — previewed "
