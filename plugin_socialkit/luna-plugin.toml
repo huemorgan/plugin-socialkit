@@ -1,0 +1,129 @@
+# Data manifest — the marketplace + Luna's installer read this WITHOUT importing
+# the plugin's Python. Keep it in sync with the PluginManifest in __init__.py.
+
+name = "plugin-socialkit"
+shown_name = "SocialKit"
+version = "0.1.0"
+description = "Generate, score, and rewrite social posts against the live LinkedIn/X algorithm, plan content calendars, and create ad visuals — previewed inline in chat. Powered by socialkit.sh."
+entry = "plugin_socialkit"
+sdk_version = "0"
+license = "MIT"
+routes_module = "routes"
+tags = ["social", "linkedin", "x", "ads", "marketing", "content", "socialkit", "chat"]
+readme = """
+# plugin-socialkit
+
+Gives the Luna agent a full social-content studio backed by
+[SocialKit](https://socialkit.sh) — every post is graded against the **live
+platform ranking rubric** (LinkedIn + X), and results render **inline in chat**:
+drafts as platform-styled preview cards, scores as dimension bars, ad creatives
+as an image gallery.
+
+## Tools
+- `generate_post(brief, platform, count, archetype, author_*, follower_band, brand_id, voice_id)` —
+  1-3 algorithm-graded drafts, previewed as LinkedIn/X-styled cards. 1 credit.
+- `score_post(post, platform, ...)` — 0-100 score over 6 weighted dimensions
+  (hook 25, algorithm fit 20, specificity 15, structure 15, voice 15,
+  engagement 10) with ranked signals. 1 credit.
+- `rewrite_post(post, platform, ...)` — score, rewrite toward distribution,
+  show before/after (after-score is measured, never inflated). 1 credit.
+- `plan_content(brief, platform, count, cadence, brand_id, voice_id)` —
+  1-14-slot calendar across content pillars. 1 credit.
+- `generate_ad_visual(headline, base_idea, business_name, ...)` — AI ad
+  creatives (image + caption + hashtags), shown as an inline gallery.
+  **1 credit per variant** (default 2, max 4).
+- `validate_post(post, platform)` — free instant preflight (length, hashtags,
+  external links, engagement bait, AI tells).
+- `save_brand(...)` / `create_voice(...)` / `list_brand_assets()` — persist the
+  owner's business context and writing voice in SocialKit so every later call
+  can reuse it via `brand_id` / `voice_id`.
+- `socialkit_status()` — account, plan, remaining monthly credits.
+
+## Luna's knowledge → the content
+SocialKit only knows what a call passes it. The tool prompts direct the agent
+to pack the owner's business background (product, audience, numbers, offers)
+from the conversation, memory, and Files into each `brief` / business-context
+field, and to distill durable context into a SocialKit **brand** and **voice**
+once, then reuse the ids.
+
+## How previews render
+Post drafts, scores, and plans are self-contained `embed_iframe` documents.
+Ad visuals are Bearer-gated on SocialKit's side, so the plugin downloads the
+bytes and serves them from `/api/p/plugin-socialkit/file/<id>`; a copy also
+lands in **Files** under `ads/` when a storage provider is enabled.
+
+## API key
+Resolved as: vault `socialkit_api_key` → env `LUNA_SOCIALKIT_API_KEY` → native
+`SOCIALKIT_API_KEY`. Keys (`sk_live_...`) come from https://app.socialkit.sh.
+`LUNA_SOCIALKIT_BASE_URL` overrides the upstream for cloud gateway proxying.
+
+## Billing
+Free plan: 100 credits/month. 1 credit per score/rewrite/generate/plan/
+voice-from-samples call; 1 credit per ad-visual variant; charged on success
+only. Reads and validation are free.
+
+Built against `luna_sdk` v0 — no `import luna.*`.
+"""
+
+[requires]
+tools = 10
+
+[[tools]]
+name = "generate_post"
+description = "Generate 1-3 algorithm-graded social drafts and preview them inline as platform-styled cards."
+policy = "ask"
+risk_level = "low"
+
+[[tools]]
+name = "score_post"
+description = "Grade a draft against the live platform ranking rubric and show the score card inline."
+policy = "ask"
+risk_level = "low"
+
+[[tools]]
+name = "rewrite_post"
+description = "Score then rewrite a draft toward better distribution; show before/after inline."
+policy = "ask"
+risk_level = "low"
+
+[[tools]]
+name = "plan_content"
+description = "Spread a brief into a 1-14-slot content calendar, shown inline."
+policy = "ask"
+risk_level = "low"
+
+[[tools]]
+name = "generate_ad_visual"
+description = "Generate ad creative images with captions and hashtags, shown inline as a gallery."
+policy = "ask"
+risk_level = "low"
+
+[[tools]]
+name = "validate_post"
+description = "Free instant preflight of a draft for structural errors and reach hazards."
+policy = "auto_approve"
+risk_level = "low"
+
+[[tools]]
+name = "save_brand"
+description = "Create or update the SocialKit brand context that conditions generation."
+policy = "ask"
+risk_level = "low"
+
+[[tools]]
+name = "create_voice"
+description = "Create a reusable writing voice from sample posts or explicit traits."
+policy = "ask"
+risk_level = "low"
+
+[[tools]]
+name = "list_brand_assets"
+description = "List saved SocialKit brands and voices."
+policy = "auto_approve"
+risk_level = "low"
+
+[[tools]]
+name = "socialkit_status"
+description = "Show the SocialKit account, plan, and remaining credits."
+policy = "auto_approve"
+risk_level = "low"
