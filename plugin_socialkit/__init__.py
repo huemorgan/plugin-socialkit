@@ -32,6 +32,11 @@ from typing import Any
 
 from luna_sdk import CredentialSlot, LunaPlugin, PluginContext, PluginManifest, ToolDef
 
+try:  # cores with the skill system export it
+    from luna_sdk import SkillDef
+except ImportError:  # pragma: no cover - older core: tools register ungated
+    SkillDef = None
+
 from . import render, socialkit, storage
 
 log = logging.getLogger("plugin-socialkit")
@@ -284,7 +289,7 @@ class SocialKitPlugin(LunaPlugin):
         shown_name="SocialKit",
         icon="megaphone",
         image="assets/icon.png",
-        version="0.1.1",
+        version="0.2.0",
         description=(
             "Generate, score, and rewrite social posts against the live LinkedIn/X "
             "algorithm, plan content calendars, and create ad visuals — previewed "
@@ -582,18 +587,66 @@ class SocialKitPlugin(LunaPlugin):
             key, base = keyed
             return json.dumps(await socialkit.whoami(key, base))
 
+        # 0.2.0: all 10 tools ride behind the social-content skill — social
+        # work is occasional, and 10 schemas in every turn's prompt is pure
+        # flooding. The skill body carries the context-packing doctrine the
+        # tools depend on anyway. Cores without a skill registry get the
+        # tools ungated (degrade, never hide).
+        pairs = [
+            (_GENERATE_DEF, _generate_post),
+            (_SCORE_DEF, _score_post),
+            (_REWRITE_DEF, _rewrite_post),
+            (_PLAN_DEF, _plan_content),
+            (_VISUAL_DEF, _generate_ad_visual),
+            (_VALIDATE_DEF, _validate_post),
+            (_SAVE_BRAND_DEF, _save_brand),
+            (_CREATE_VOICE_DEF, _create_voice),
+            (_LIST_ASSETS_DEF, _list_brand_assets),
+            (_STATUS_DEF, _socialkit_status),
+        ]
+        gate = getattr(ctx, "skill_registry", None) is not None and SkillDef is not None
         reg = ctx.tool_registry
-        reg.register(self.manifest.name, _GENERATE_DEF, _generate_post)
-        reg.register(self.manifest.name, _SCORE_DEF, _score_post)
-        reg.register(self.manifest.name, _REWRITE_DEF, _rewrite_post)
-        reg.register(self.manifest.name, _PLAN_DEF, _plan_content)
-        reg.register(self.manifest.name, _VISUAL_DEF, _generate_ad_visual)
-        reg.register(self.manifest.name, _VALIDATE_DEF, _validate_post)
-        reg.register(self.manifest.name, _SAVE_BRAND_DEF, _save_brand)
-        reg.register(self.manifest.name, _CREATE_VOICE_DEF, _create_voice)
-        reg.register(self.manifest.name, _LIST_ASSETS_DEF, _list_brand_assets)
-        reg.register(self.manifest.name, _STATUS_DEF, _socialkit_status)
-        log.info("socialkit.tools_registered: 10 tools")
+        for tool_def, handler in pairs:
+            if gate:
+                try:
+                    reg.register(self.manifest.name, tool_def, handler, skill_gated=True)
+                    continue
+                except TypeError:  # core knows skills but not the kwarg
+                    gate = False
+            reg.register(self.manifest.name, tool_def, handler)
+        if gate:
+            try:
+                ctx.skill_registry.unregister_plugin(self.manifest.name)
+            except Exception:  # noqa: BLE001 — stale-sweep is best effort
+                pass
+            ctx.skill_registry.register(
+                self.manifest.name,
+                SkillDef(
+                    name="social-content",
+                    description=(
+                        "Create, score, and rewrite social posts (LinkedIn/X), "
+                        "plan content calendars, and generate ad visuals via "
+                        "SocialKit. Load when the owner wants social media "
+                        "content; the tools unlock on your next turn."
+                    ),
+                    body=(
+                        "# Social content (SocialKit)\n\n"
+                        "Tools (unlock on your NEXT turn after loading this "
+                        "skill): generate_post, score_post, rewrite_post, "
+                        "plan_content, generate_ad_visual, validate_post, "
+                        "save_brand, create_voice, list_brand_assets, "
+                        "socialkit_status.\n\n"
+                        f"{_CONTEXT_NOTE}\n\n"
+                        "Billing: score/rewrite/generate/plan/voice-from-"
+                        "samples cost 1 credit each; generate_ad_visual costs "
+                        "1 credit PER VARIANT. validate_post and reads are "
+                        "free. Check socialkit_status if a call reports a "
+                        "key/credit problem."
+                    ),
+                    tools=[d.name for d, _ in pairs],
+                ),
+            )
+        log.info("socialkit.tools_registered: 10 tools (gated=%s)", gate)
 
     # ---- helpers -------------------------------------------------------- #
 

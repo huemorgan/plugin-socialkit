@@ -1,6 +1,6 @@
 [project]
 name = "plugin-socialkit"
-version = "0.1.1"
+version = "0.2.0"
 description = "Generate, score, and rewrite social posts against the live LinkedIn/X algorithm, plan content calendars, and create ad visuals — previewed inline in chat. Powered by socialkit.sh. Built on luna_sdk v0."
 readme = "README.md"
 license = { text = "MIT" }

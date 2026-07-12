@@ -3,7 +3,7 @@
 
 name = "plugin-socialkit"
 shown_name = "SocialKit"
-version = "0.1.1"
+version = "0.2.0"
 description = "Generate, score, and rewrite social posts against the live LinkedIn/X algorithm, plan content calendars, and create ad visuals — previewed inline in chat. Powered by socialkit.sh."
 entry = "plugin_socialkit"
 sdk_version = "0"
